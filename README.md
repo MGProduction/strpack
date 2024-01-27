@@ -4,6 +4,38 @@ yet another simple string compression (with a fast / handy decompression for use
 This simple C library is a modified version of what I use in my **Storytllr64 engine** (IF engine for **C64**) to compress messages and element names. 
 It's supposed to compress even small strings, and it's meant to be used with single-byte char strings (NOT multi-byte, like utf-8).
 
+## usage
+
+	#define STRPACK_IMPLEMENT
+	#include "../strpack.h"
+	
+	...
+	char pstr[256];	
+	strpack_compress("This is a test",pstr,sizeof(pstr),NULL;
+	...
+	char ostr[256];
+	strpack_decompress(pstr,ostr,sizeof(ostr);
+
+	If you don't need a compressor (i.e. because you compress resources in a separate program, then your program just uses them) you can add
+ 
+	#define STRPACK_DECOMPRESSONLY
+
+	If you instead want to optimize strpack internal dictionary you can add 
+ 
+	#define STRPACK_IMPLEMENT_BUILD
+ 
+	and use 
+ 
+	strpack_build("corpus.txt","strpack_dictionary.h",0);
+ 
+	to generate a new one and then adding
+ 
+	#define STRPACK_USEEXTERNALDICTIONARY
+ 
+	to specify that you want to include what is in that file as a dictionary
+
+## info
+
 It's somewhat similar to other libraries ([smaz](https://github.com/antirez/smaz), [shoco](https://github.com/Ed-von-Schleck/shoco), etc) in that it's a "dictionary-based" compressor, BUT it uses a minimal dictionary, with mainly bigrams and a reduced set of longer strings (not yet included, although you can generate trigrams as well), because on low memory systems even dictionary size AND usage is important. 
 
 It also uses some LZ/RLE code (not useful for short strings, but it helps to save extra space in medium-sized clauses).
