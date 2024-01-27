@@ -11,10 +11,10 @@ It's supposed to compress even small strings, and it's meant to be used with sin
 	
 	...
 	char pstr[256];	
-	strpack_compress("This is a test",pstr,sizeof(pstr),NULL;
+	strpack_compress("This is a test",pstr,sizeof(pstr),NULL);
 	...
 	char ostr[256];
-	strpack_decompress(pstr,ostr,sizeof(ostr);
+	strpack_decompress(pstr,ostr,sizeof(ostr));
 
 	If you don't need a compressor (i.e. because you compress resources in a separate program, then your program just uses them) you can add
  
