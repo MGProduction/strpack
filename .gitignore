@@ -50,3 +50,9 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+vs2008/bin
+vs2008/Debug
+vs2008/Release
+*.ncb
+*.suo
+*.vcproj.*
