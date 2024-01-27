@@ -1,7 +1,7 @@
 # strpack
 yet another simple string compression (with a fast / handy decompression for use on 8 bit machines as well)
 
-This simple C library is a modified version of what I use in my **Storytllr64 engine** (IF engine for **C64**) to compress messages and element names. 
+This simple single-file header-only C library is a modified version of what I use in my **Storytllr64 engine** (IF engine for **C64**) to compress messages and element names. 
 It's supposed to compress even small strings, and it's meant to be used with single-byte char strings (NOT multi-byte, like utf-8).
 
 ## usage
