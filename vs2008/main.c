@@ -6,8 +6,9 @@
 #include <string.h>
 
 #define STRPACK_IMPLEMENT
+//#define STRPACK_DECOMPRESSONLY
 //#define STRPACK_USEEXTERNALDICTIONARY
-#define STRPACK_IMPLEMENT_BUILD
+//#define STRPACK_IMPLEMENT_BUILD
 #include "../strpack.h"
 
 int strpack_testcompressfile(const char*corpus)
@@ -53,7 +54,7 @@ int main(int argc, char* argv[])
                             "L'autore di questa libreria vive in Emilia Romagna",
                             "strpack is somewhat similar to smaz or shoco",
                             ""};
- char pstr[256],str[256];
+ char pstr[256];
  int  i,len,perc,gperc=0;
 
  // -- strpack_build("bin\\TheMoonstone.txt","..\\strpack_dictionary.h",0); // 

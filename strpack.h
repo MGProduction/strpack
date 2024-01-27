@@ -11,6 +11,9 @@
 //     #define STRPACK_IMPLEMENT
 // in *one* C/CPP file that includes this file.
 //
+// if you need ONLY decompression you can add
+//     #define STRPACK_DECOMPRESSONLY
+//
 // default mono+bigram dictionary are created for ANSI English text
 // you can create/optimize this dictionary using 
 //
@@ -330,6 +333,7 @@ int strpack_build(const char*corpus,const char*output,int flags)
 }
 #endif
 
+#if !defined(STRPACK_DECOMPRESSONLY)
 #if defined(strpack_full)
 u8 strpack_getsame(const char*text)
 {
@@ -474,6 +478,7 @@ int strpack_compress(const char*text,char*packedtext,int*perc)
   *perc=j*100/i;
  return j;
 }
+#endif
 
 #if defined(strpack_safe)
 int strpack_decompress(const char*packedtext,char*text,int textsize)
@@ -582,16 +587,19 @@ int strpack_decompress(const char*packedtext,char*text)
  text[j]=0;
  return j;
 }
+
 #else
 
 #if defined(STRPACK_IMPLEMENT_BUILD)
 int strpack_build(const char*corpus,int flags);
 #endif
 
+#if !defined(STRPACK_DECOMPRESSONLY)
 #if defined(strpack_safe)
 int strpack_compress(const char*text,char*packedtext,int maxpackedtext,int*perc);
 #else
 int strpack_compress(const char*text,char*packedtext,int*perc);
+#endif
 #endif
 
 #if defined(strpack_safe)
@@ -601,11 +609,12 @@ int strpack_decompress(const char*packedtext,char*text);
 #endif
 #endif
 
+#endif
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif
 
 //
 // MIT License
