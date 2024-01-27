@@ -8,7 +8,7 @@
 #define STRPACK_IMPLEMENT
 //#define STRPACK_DECOMPRESSONLY
 //#define STRPACK_USEEXTERNALDICTIONARY
-//#define STRPACK_IMPLEMENT_BUILD
+#define STRPACK_IMPLEMENT_BUILD
 #include "../strpack.h"
 
 int strpack_testcompressfile(const char*corpus)
@@ -53,14 +53,19 @@ int main(int argc, char* argv[])
                             "My name's Marco Giorgini and I live in Modena",
                             "L'autore di questa libreria vive in Emilia Romagna",
                             "strpack is somewhat similar to smaz or shoco",
+                            "The program is designed to work well with English text",
+                            "As long as the messages are latin letters natural language messages with common statistical properties, the program will only seldom use more space than needed",
+                            "Anche se in maniera meno efficiente, questo algoritmo di compressione è in grado di comprimere testi in altre lingue.",
                             ""};
  char pstr[256];
  int  i,len,perc,gperc=0;
+ FILE*f;
 
- // -- strpack_build("bin\\TheMoonstone.txt","..\\strpack_dictionary.h",0); // 
+ strpack_build("bin\\TheMoonstone.txt","..\\strpack_dictionary.h",0); // 
 
- // -- strpack_testcompressfile("bin\\TheMoonstone.txt");
- FILE*f=fopen("test.txt","wb");
+ strpack_testcompressfile("bin\\TheMoonstone.txt");
+
+ f=fopen("test.txt","wb");
  for(i=0;*samples[i];i++)
  {
   len=strpack_compress(samples[i],pstr,sizeof(pstr),&perc);gperc+=perc;
