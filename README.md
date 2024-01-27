@@ -7,7 +7,7 @@ It's supposed to compress even small strings, and it's meant to be used with sin
 ## usage
 
 	#define STRPACK_IMPLEMENT
-	#include "../strpack.h"
+	#include "strpack.h"
 	
 	...
 	char pstr[256];	
