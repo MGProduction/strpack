@@ -26,7 +26,8 @@ It's supposed to compress even small strings, and it's meant to be used with sin
  
 	and use 
  
-	strpack_build("corpus.txt","strpack_dictionary.h",0);
+	strpack_build("corpus.txt",maxsize,0,"strpack_dictionary.h"); 
+ 	(you can use maxsize<=0 to go auto, or set a maxsize for the dictionary i.e. 128 or 256 bytes)
  
 	to generate a new one and then adding
  
