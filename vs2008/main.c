@@ -11,24 +11,43 @@
 #define STRPACK_IMPLEMENT_BUILD
 #include "../strpack.h"
 
+//#define COMPARATIVE_TESTS
+#if defined(COMPARATIVE_TESTS)
+#include "bin/smaz.c"
+#include "bin/smaz2.c"
+#endif
+
 int strpack_testcompressfile(const char*corpus)
 {
  FILE*f=fopen(corpus,"rb");
  if(f)
   {
-   int real=0,compressed=0,err=0;
+   int real=0,strpack_compressed=0,strpack_result=0,err=0;
+   #if defined(COMPARATIVE_TESTS)
+   int smaz_compressed=0,smaz_result=0;
+   int smaz2_compressed=0,smaz2_result=0;
+   #endif
    while(!feof(f))
     {
      char line[9102],oline[1024],cline[1024];
      fgets(line,sizeof(line),f);
      real+=(int)strlen(line);
-     compressed+=strpack_compress(line,oline,sizeof(oline),NULL);
+     strpack_compressed+=strpack_compress(line,oline,sizeof(oline),NULL);
      strpack_decompress(oline,cline,sizeof(cline));
      if(strcmp(line,cline))
       err++;
+     #if defined(COMPARATIVE_TESTS)
+     smaz_compressed+=smaz_compress(line,strlen(line),oline,sizeof(oline));
+     smaz2_compressed+=smaz2_compress(oline,sizeof(oline),line,strlen(line));
+     #endif
     }
    fclose(f);
-   return compressed*100/real;
+   #if defined(COMPARATIVE_TESTS)
+   smaz_result=smaz_compressed*100/real;
+   smaz2_result=smaz2_compressed*100/real;
+   #endif
+   strpack_result=strpack_compressed*100/real;
+   return strpack_result;
   }
  return 0;
 }
@@ -68,8 +87,16 @@ int main(int argc, char* argv[])
  f=fopen("test.txt","wb");
  for(i=0;*samples[i];i++)
  {
+  #if defined(COMPARATIVE_TESTS)
+  int lens;
+  #endif
   len=strpack_compress(samples[i],pstr,sizeof(pstr),&perc);gperc+=perc;
+  #if defined(COMPARATIVE_TESTS)
+  lens=smaz_compress(samples[i],strlen(samples[i]),pstr,sizeof(pstr));
+  fprintf(f,"'%s' compressed to %d bytes (orig: %d smaz: %d)\n",samples[i],len,strlen(samples[i]),lens);
+  #else
   fprintf(f,"'%s' compressed to its %d%%\n",samples[i],perc);
+  #endif
  }
  fclose(f);
 
