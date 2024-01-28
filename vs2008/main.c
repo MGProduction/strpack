@@ -61,9 +61,9 @@ int main(int argc, char* argv[])
  int  i,len,perc,gperc=0;
  FILE*f;
 
- strpack_build("bin\\TheMoonstone.txt",512,0,"..\\strpack_dictionary.h"); // 
+ strpack_build("bin\\TheMoonstone.txt",400,200,0,"..\\strpack_dictionary.h"); // 
 
- strpack_testcompressfile("bin\\timeandthegods.txt");
+ strpack_testcompressfile("bin\\TheMoonstone.txt");
 
  f=fopen("test.txt","wb");
  for(i=0;*samples[i];i++)
