@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
  int  i,len,perc,gperc=0;
  FILE*f;
 
- strpack_build("bin\\TheMoonstone.txt",400,200,0,"..\\strpack_dictionary.h"); // 
+ strpack_build("bin\\TheMoonstone.txt",512,256,0,"..\\strpack_dictionary.h"); // 
 
  strpack_testcompressfile("bin\\TheMoonstone.txt");
 
