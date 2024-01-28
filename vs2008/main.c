@@ -7,7 +7,8 @@
 
 #define STRPACK_IMPLEMENT
 //#define STRPACK_DECOMPRESSONLY
-#define STRPACK_USEEXTERNALDICTIONARY
+//#define STRPACK_DEFAULT_SPANISH
+//#define STRPACK_USEEXTERNALDICTIONARY
 #define STRPACK_IMPLEMENT_BUILD
 #include "../strpack.h"
 
@@ -81,9 +82,16 @@ int main(int argc, char* argv[])
  FILE*f;
 
  strpack_build("bin\\TheMoonstone.txt",512,256,0,"..\\strpack_dictionary.h"); // 
+ strpack_build("bin\\promessisposi.txt",512,256,0,"..\\strpack_dictionary.h"); // 
+ strpack_build("bin\\milleetunjours.txt",512,256,0,"..\\strpack_dictionary.h"); // 
+ strpack_build("bin\\milleyunanoche.txt",512,256,0,"..\\strpack_dictionary.h"); // 
  
  strpack_testcompressfile("bin\\TheMoonstone.txt");
  strpack_testcompressfile("bin\\TheHoundofBaskerville.txt");
+ strpack_testcompressfile("bin\\promessisposi.txt");
+ strpack_testcompressfile("bin\\ilpassaggio.txt");
+ strpack_testcompressfile("bin\\memoiresdunjeunhommerange.txt");
+ strpack_testcompressfile("bin\\milleyunanoche.txt");
 
  strpack_build("bin\\debug_msg.txt",512,256,0,"..\\strpack_dictionary.h"); // 
  strpack_testcompressfile("bin\\debug_msg.txt");
