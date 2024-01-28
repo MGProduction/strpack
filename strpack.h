@@ -1,5 +1,5 @@
 //
-// strpack.h - v0.1 - string compressor/decompressor
+// strpack.h - v0.11 - string compressor/decompressor
 //
 // single-file C implementation by Marco Giorgini 
 //
@@ -68,8 +68,11 @@ u8 strpack_dictionary[455]={0x32,0xc9,0x00,0x0a,0x0d,0x20,0x21,0x2c,0x2d,0x2e,0x
 0x73,0x68,0x73,0x69,0x73,0x6f,0x73,0x73,0x73,0x74,0x73,0x75,0x74,0x20,0x74,0x2c,0x74,0x2e,0x74,0x61,0x74,0x65,0x74,0x68,0x74,0x69,0x74,0x6f,0x74,0x72,0x74,0x74,
 0x75,0x20,0x75,0x6c,0x75,0x6e,0x75,0x70,0x75,0x72,0x75,0x73,0x75,0x74,0x76,0x65,0x76,0x69,0x77,0x20,0x77,0x61,0x77,0x65,0x77,0x68,0x77,0x69,0x77,0x6f,0x79,0x20,
 0x79,0x6f,0x92,0x73,0x94,0x0d,0x94,0x20};
-u8 strpack_dictionary_bigramstart=51;
-u8 strpack_dictionary_trigramstart=252;
+#define strpack_dictionary_bigramstart 51
+#define strpack_dictionary_trigramstart 252
+#define strpack_dictionary_bibackref 0
+#define strpack_dictionary_tribackref 0
+#define strpack_dictionary_quadbackref 0
 #endif
 
 #if defined(STRPACK_IMPLEMENT_BUILD)
@@ -112,12 +115,16 @@ int seq_compare(const void*a,const void*b)
 #define MASK_BIGRAMS   0x40000000
 #define MASK_TRIGRAMS  0x80000000
 
-int strpack_build(const char*corpus,const char*output,int flags)
+int strpack_build(const char*corpus,int maxsize,int flags,const char*output)
 {
  int  i,j;
+ u8   trigramstart,bigramstart;
  u8   mused=0,bused=0,lastcharused=0;
- int *trigr,mono_count=0,bigr_count=0,trigr_count=0,t=0,m=0,b=0;
+ int *trigr,mono_count=0,bigr_count=0,trigr_count=0,t=0,m=0,b=0,skip=0;
  int *seq,iseq=0,trigrsize=0;
+
+ if(maxsize<=256)
+  flags|=flags_minimaldict;
 
  if(flags&flags_trigrams)
   trigrsize=256*256*256;
@@ -220,8 +227,6 @@ int strpack_build(const char*corpus,const char*output,int flags)
         if(trigr[i]!=SELECTED)
          if(trigr[i]>top)
           {
-           top=trigr[i];
-           best=i;
            if(i&0xFF0000)
             mask=MASK_TRIGRAMS;
            else
@@ -229,6 +234,13 @@ int strpack_build(const char*corpus,const char*output,int flags)
              mask=MASK_BIGRAMS;
             else
              mask=MASK_MONOGRAMS;
+           if((flags&flags_minimaldict)&&(mask&MASK_MONOGRAMS))
+            ;
+           else
+            {
+            top=trigr[i];
+            best=i;
+            }
           }
 
        seq[iseq*2]=mask|best;
@@ -252,79 +264,141 @@ int strpack_build(const char*corpus,const char*output,int flags)
   {
    int top;
    for(j=i=0;i<256*256;i++)
-    if(trigr[i]&0xFF00)
-     {
-      char b[3];
-      b[0]=i&0xFF;b[1]=i>>8;b[2]=0;
-      seq[j++]=MASK_BIGRAMS|i;
-      seq[j++]=trigr[i];      
-     }
-   qsort(seq,j/2,sizeof(seq[0])*2,seq_compare);
+    if(trigr[i])
+     if((i&0xFFFF00)==0)
+      if(i>lastcharused)
+       lastcharused=i;
+   qsort(seq,iseq,sizeof(seq[0])*2,seq_compare);
    top=strpackcode_firstcode-(lastcharused+1);
-   for(i=0;i<min(top,j/2);i++)
-    bigr_count++;
-   strpack_dictionary_bigramstart=lastcharused+1;
-   strpack_dictionary_trigramstart=0;
+   mono_count=bigr_count=trigr_count=0;
+   for(i=0;i<min(top,iseq);i++)
+    if((maxsize>0)&&(3+(bigr_count+1)*2>maxsize))
+     ;
+    else
+     bigr_count++;
+   bigramstart=lastcharused+1;
+   trigramstart=bigramstart+bigr_count;
    strpack_dictionary[0]=0;
    strpack_dictionary[1]=(u8)bigr_count;     
    strpack_dictionary[2]=0;
-   for(m=b=i=0;i<min(top,j/2);i++)
-    {
-     int ij=seq[i*2]&0x7FFFFFFF;
-     strpack_dictionary[3+b++]=ij&0xFF;
-     strpack_dictionary[3+b++]=ij>>8;
-    }
+   for(m=b=i=0;i<min(top,iseq);i++)
+    if(b/2<bigr_count)
+     {
+      int ij=seq[i*2]&0x7FFFFFFF;
+      strpack_dictionary[3+b++]=ij&0xFF;
+      strpack_dictionary[3+b++]=ij>>8;
+     }
    qsort(strpack_dictionary+3,strpack_dictionary[1],2,bigr_compare);
   }
  else
   {
    qsort(seq,iseq,sizeof(seq[0])*2,seq_compare);
-   strpack_dictionary_bigramstart=mono_count+1;
-   strpack_dictionary_trigramstart=strpack_dictionary_bigramstart+bigr_count;
+   if(maxsize>0)
+    {
+     int size=3;
+     mono_count=bigr_count=trigr_count=0;
+     for(m=b=i=0;i<min(strpackcode_firstcode-1,iseq);i++)
+      if(seq[i*2]&MASK_TRIGRAMS)
+       {
+        if(size+3>=maxsize)
+         ;
+        else
+         {
+          size+=3;
+          trigr_count++;
+         }
+       }
+      else
+      if(seq[i*2]&MASK_BIGRAMS)
+       {
+        if(size+2>=maxsize)
+         ;
+        else
+         {
+          size+=2;
+          bigr_count++;
+         }
+       }
+      else
+       if(size+1>=maxsize)
+        ;
+       else
+        {
+         size+=1;
+         mono_count++;
+        }
+    }
    strpack_dictionary[0]=(u8)mono_count;
    strpack_dictionary[1]=(u8)bigr_count;
    strpack_dictionary[2]=(u8)trigr_count;
+   bigramstart=mono_count+1;
+   trigramstart=bigramstart+bigr_count;
+
 
    for(m=b=i=0;i<min(strpackcode_firstcode-1,iseq);i++)
     if(seq[i*2]&MASK_TRIGRAMS)
      {
-      int ij=seq[i*2]&0x0FFFFFFF;
-      strpack_dictionary[3+mono_count+bigr_count*2+t++]=ij&0xFF;
-      strpack_dictionary[3+mono_count+bigr_count*2+t++]=(ij>>8)&0xFF;
-      strpack_dictionary[3+mono_count+bigr_count*2+t++]=(ij>>16)&0xFF;
+      if(t/3<trigr_count)
+       {
+        int ij=seq[i*2]&0x0FFFFFFF;
+        strpack_dictionary[3+mono_count+bigr_count*2+t++]=ij&0xFF;
+        strpack_dictionary[3+mono_count+bigr_count*2+t++]=(ij>>8)&0xFF;
+        strpack_dictionary[3+mono_count+bigr_count*2+t++]=(ij>>16)&0xFF;
+       }
+      else
+       skip++;
      }
     else
     if(seq[i*2]&MASK_BIGRAMS)
      {
-      int ij=seq[i*2]&0x0FFFFFFF;
-      strpack_dictionary[3+mono_count+b++]=ij&0xFF;
-      strpack_dictionary[3+mono_count+b++]=ij>>8;
+      if(b/2<bigr_count)
+       {
+        int ij=seq[i*2]&0x0FFFFFFF;
+        strpack_dictionary[3+mono_count+b++]=ij&0xFF;
+        strpack_dictionary[3+mono_count+b++]=ij>>8;
+       }
+      else
+       skip++;
      }
     else
-     strpack_dictionary[3+m++]=seq[i*2];
+     if(m<mono_count)
+      strpack_dictionary[3+m++]=seq[i*2];
+     else
+      skip++;
 
    qsort(strpack_dictionary+3,strpack_dictionary[0],1,mono_compare);
    qsort(strpack_dictionary+3+strpack_dictionary[0],strpack_dictionary[1],2,bigr_compare);
    qsort(strpack_dictionary+3+strpack_dictionary[0]+strpack_dictionary[1]*2,strpack_dictionary[2],3,trigr_compare);
-
-   if(output&&*output)
-    {
-     FILE*f=fopen(output,"wb");
-     if(f)
-      {    
-       int hm=3+strpack_dictionary[0]+strpack_dictionary[1]*2+strpack_dictionary[2]*3;
-       fprintf(f,"u8 strpack_dictionary[%d]={",hm);
-       for(i=0;i<hm;i++)
-       {
-        if((i%32)==31) 
-         fprintf(f,"\r\n");
-        fprintf(f,"0x%02x",strpack_dictionary[i]);
-        if(i+1<hm)
-         fprintf(f,",");
-       }
-       fprintf(f,"};\r\nu8 strpack_dictionary_bigramstart=%d;\r\nu8 strpack_dictionary_trigramstart=%d;\r\n",strpack_dictionary_bigramstart,strpack_dictionary_trigramstart);
-       fclose(f);
-      }
+  }
+ if(output&&*output)
+  {
+   FILE*f=fopen(output,"wb");
+   if(f)
+    {    
+     int hm=3+strpack_dictionary[0]+strpack_dictionary[1]*2+strpack_dictionary[2]*3;
+     fprintf(f,"u8 strpack_dictionary[%d]={",hm);
+     for(i=0;i<hm;i++)
+     {
+      if((i%32)==31) 
+       fprintf(f,"\r\n");
+      fprintf(f,"0x%02x",strpack_dictionary[i]);
+      if(i+1<hm)
+       fprintf(f,",");
+     }
+     fprintf(f,"};\r\n#define strpack_dictionary_bigramstart %d\r\n#define strpack_dictionary_trigramstart %d\r\n",bigramstart,trigramstart);
+     if(trigramstart+trigr_count+16<strpackcode_firstcode)
+      fprintf(f,"#define strpack_dictionary_bibackref %d\r\n",trigramstart+trigr_count);
+     else
+      fprintf(f,"#define strpack_dictionary_bibackref 0\r\n");
+     if(trigramstart+trigr_count+16+16<strpackcode_firstcode)
+      fprintf(f,"#define strpack_dictionary_tribackref %d\r\n",trigramstart+trigr_count+16);
+     else
+      fprintf(f,"#define strpack_dictionary_tribackref 0\r\n");
+     if(trigramstart+trigr_count+16+16+16<strpackcode_firstcode)
+      fprintf(f,"#define strpack_dictionary_quadbackref %d\r\n",trigramstart+trigr_count+16+16);
+     else
+      fprintf(f,"#define strpack_dictionary_quadbackref 0\r\n");
+     fclose(f);
     }
   }
 
@@ -346,9 +420,13 @@ u8 strpack_getsame(const char*text)
  else
   return 0;
 }
-u8 strpack_getbackref(const char*text,int i,u8*len)
+#define dbg_stats
+#if defined(dbg_stats)
+int dbg_backlen[64],dbg_backref[64];
+#endif
+u8 strpack_getbackref(const char*text,int i,u8*len,u8*code)
 {
- int j=max(i-34,0),maxk=0,bestj=0;
+ int j=max(i-34,0),backlen=0,bestj=0;
  while(j<i)
   {
    if(text[j]==text[i])
@@ -356,19 +434,59 @@ u8 strpack_getbackref(const char*text,int i,u8*len)
      int k=1;
      while((j+k<i)&&(text[j+k]==text[i+k])&&(k<7+2)) // 3 bits +2
       k++;
-     if((k>2)&&(k>maxk))
-      {maxk=k;bestj=j;}
+     if((k>1)&&(k>=backlen))
+      {backlen=k;bestj=j;}
     }
    j++;
   }
- if(maxk)
+ if(backlen)
   {
-   if(len) *len=(u8)maxk;
-   return (u8)(i-bestj);
+   u8 backref=(u8)(i-bestj);
+#if defined(dbg_stats)    
+   dbg_backlen[backlen]++;
+   dbg_backref[backref]++;
+#endif
+   if(strpack_dictionary_bibackref)
+    {
+     if(backlen==2)
+      if((backref>=2)&&(backref<2+16))
+       {
+        if(len) *len=backlen;
+        if(code) *code=strpack_dictionary_bibackref+(backref-2);
+        return backref;
+       }
+    }
+   if(strpack_dictionary_tribackref)
+    {
+     if(backlen==3)
+      if((backref>=3)&&(backref<3+16))
+       {
+        if(len) *len=backlen;
+        if(code) *code=strpack_dictionary_tribackref+(backref-3);
+        return backref;
+       }
+    }
+   if(strpack_dictionary_quadbackref)
+    {
+     if(backlen==4)
+      if((backref>=4)&&(backref<4+16))
+       {
+        if(len) *len=backlen;
+        if(code) *code=strpack_dictionary_quadbackref+(backref-4);
+        return backref;
+       }
+    }
+   if(backlen>2)
+    {
+     if(len) *len=(u8)backlen;
+     return backref;
+    }
   }
- else
-  return 0;
+ return 0;
 }
+#endif
+#if defined(dbg_stats)
+int cnt_monograms=0,cnt_bigrams=0,cnt_trigrams=0,cnt_literals=0,cnt_backrefs=0,cnt_shortbackrefs=0,cnt_rles=0;
 #endif
 #if defined(strpack_safe)
 int strpack_compress(const char*text,char*packedtext,int maxpackedtext,int*perc)
@@ -379,26 +497,38 @@ int strpack_compress(const char*text,char*packedtext,int*perc)
  const char*trigr_storage=strpack_dictionary+3+strpack_dictionary[0]+(strpack_dictionary[1]<<1);
  const char*bigr_storage=strpack_dictionary+3+strpack_dictionary[0];
  const char*mono_storage=strpack_dictionary+3;
- int        i=0,j=0,lastemitchar=0;
- int        unpacked=0,packed=0,literals=0,backrefs=0,rles=0;
+ int        i=0,j=0,lastemitchar=0; 
  while(text[i])
   {
    u8 code=0,codepar1=0,codepar2=0,codecoverage=1;
 #if defined(strpack_full)
    u8 same=strpack_getsame(text+i);
-   u8 backlen=0,backref=strpack_getbackref(text,i,&backlen);
+   u8 backlen=0,backref=strpack_getbackref(text,i,&backlen,&code);
    if(same>backlen)
    {
-    rles++;
+#if defined(dbg_stats)
+    cnt_rles++;
+#endif
     code=strpackcode_emitrle;
     codecoverage=codepar1=same;codepar2=text[i];
    }
    else
    if(backlen)
    {
-    backrefs++;
-    code=strpackcode_emitbackref;
-    codepar1=(backlen-2)|(backref-backlen)<<3;
+    if(code)
+     {
+#if defined(dbg_stats)
+     cnt_shortbackrefs++;    
+#endif
+     }
+    else
+     {
+#if defined(dbg_stats)
+      cnt_backrefs++;    
+#endif
+      code=strpackcode_emitbackref;
+      codepar1=(backlen-2)|(backref-backlen)<<3;
+     }
     codecoverage=backlen;
    }
 #endif
@@ -409,7 +539,9 @@ int strpack_compress(const char*text,char*packedtext,int*perc)
       {
        code=strpack_dictionary_trigramstart+((fnd-trigr_storage)/3);
        codecoverage=3;
-       packed++;
+#if defined(dbg_stats)
+       cnt_trigrams++;    
+#endif
       }
     }
    if((code==0)&&(text[i+1]))
@@ -419,7 +551,9 @@ int strpack_compress(const char*text,char*packedtext,int*perc)
       {
        code=strpack_dictionary_bigramstart+((fnd-bigr_storage)>>1);
        codecoverage=2;
-       packed++;
+#if defined(dbg_stats)
+       cnt_bigrams++;    
+#endif
       }
     }
    if(code==0)
@@ -434,7 +568,9 @@ int strpack_compress(const char*text,char*packedtext,int*perc)
       if(fnd)
        {
         code=1+(fnd-mono_storage);
-        unpacked++;
+#if defined(dbg_stats)
+        cnt_monograms++;    
+#endif
        }
      }
    if(code==0)
@@ -443,7 +579,9 @@ int strpack_compress(const char*text,char*packedtext,int*perc)
       lastemitchar=j;
      packedtext[j++]=strpackcode_emitchar;
      packedtext[j++]=text[i];   
-     literals++;
+#if defined(dbg_stats)
+     cnt_literals++;    
+#endif
     }
    else
     {
@@ -489,7 +627,7 @@ int strpack_decompress(const char*packedtext,char*text)
  int        i=0,j=0; 
  while(packedtext[i])
   {
-   u8 ch=packedtext[i++];
+   u8 ch=packedtext[i++],ln;
    switch(ch)
     {
 #if defined(strpack_full)
@@ -509,7 +647,7 @@ int strpack_decompress(const char*packedtext,char*text)
      break;
     case strpackcode_emitrle:
      {
-      u8 ln=packedtext[i++];
+      ln=packedtext[i++];
       ch=packedtext[i++];
       while(ln--)
 #if defined(strpack_safe)
@@ -542,46 +680,69 @@ int strpack_decompress(const char*packedtext,char*text)
      text[j++]=packedtext[i++];
     break;
     default:
-     {
-      const char*trigr_storage=strpack_dictionary+3+strpack_dictionary[0]+(strpack_dictionary[1]<<1);
-      const char*bigr_storage=strpack_dictionary+3+strpack_dictionary[0];
-      const char*mono_storage=strpack_dictionary+3;  
-      const char*ptr;
-      u8         ln=0;
-      if(ch>=strpack_dictionary_trigramstart)
-       {       
-        ch-=strpack_dictionary_trigramstart;
-        ptr=trigr_storage+(ch<<1)+ch;
-        ln=3;
-       }
-      else
-      if(ch>=strpack_dictionary_bigramstart)
-       {
-        ch-=strpack_dictionary_bigramstart;
-        ptr=bigr_storage+(ch<<1);
-        ln=2;
-       }
-      else
-      if(strpack_dictionary[0])
-       {ptr=mono_storage+(ch-1);ln=1;}
-      if(ln)
-       {
-        while(ln--)
-#if defined(strpack_safe)
-         if(j+1>=textsize)
-          break;
-         else
-#endif
-         text[j++]=*ptr++;
-       }
-      else
-#if defined(strpack_safe)
-       if(j+1>=textsize)
-        break;
+     if( (strpack_dictionary_quadbackref&&(ch>=strpack_dictionary_quadbackref)&&(ln=4)) ||
+         (strpack_dictionary_tribackref&&(ch>=strpack_dictionary_tribackref)&&(ln=3)) ||
+         (strpack_dictionary_bibackref&&(ch>=strpack_dictionary_bibackref)&&(ln=2)) )
+      {              
+       int k;
+       if(ln==2)
+        ch-=strpack_dictionary_bibackref;
        else
+        if(ln==3)
+         ch-=strpack_dictionary_tribackref;
+        else
+         if(ln==4)
+          ch-=strpack_dictionary_quadbackref;
+       k=j-(ch+ln);
+       while(ln--)
+#if defined(strpack_safe)
+        if(j+1>=textsize)
+         break;
+        else
 #endif
-       text[j++]=ch;
-     }
+        text[j++]=text[k++];
+      }
+     else
+      {
+       const char*trigr_storage=strpack_dictionary+3+strpack_dictionary[0]+(strpack_dictionary[1]<<1);
+       const char*bigr_storage=strpack_dictionary+3+strpack_dictionary[0];
+       const char*mono_storage=strpack_dictionary+3;  
+       const char*ptr;
+       u8         ln=0;
+       if(ch>=strpack_dictionary_trigramstart)
+        {       
+         ch-=strpack_dictionary_trigramstart;
+         ptr=trigr_storage+(ch<<1)+ch;
+         ln=3;
+        }
+       else
+       if(ch>=strpack_dictionary_bigramstart)
+        {
+         ch-=strpack_dictionary_bigramstart;
+         ptr=bigr_storage+(ch<<1);
+         ln=2;
+        }
+       else
+       if(strpack_dictionary[0])
+        {ptr=mono_storage+(ch-1);ln=1;}
+       if(ln)
+        {
+         while(ln--)
+ #if defined(strpack_safe)
+          if(j+1>=textsize)
+           break;
+          else
+ #endif
+          text[j++]=*ptr++;
+        }
+       else
+ #if defined(strpack_safe)
+        if(j+1>=textsize)
+         break;
+        else
+ #endif
+        text[j++]=ch;
+      }
     }
   }
  text[j]=0;

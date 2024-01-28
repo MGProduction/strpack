@@ -7,7 +7,7 @@
 
 #define STRPACK_IMPLEMENT
 //#define STRPACK_DECOMPRESSONLY
-//#define STRPACK_USEEXTERNALDICTIONARY
+#define STRPACK_USEEXTERNALDICTIONARY
 #define STRPACK_IMPLEMENT_BUILD
 #include "../strpack.h"
 
@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
  int  i,len,perc,gperc=0;
  FILE*f;
 
- strpack_build("bin\\TheMoonstone.txt","..\\strpack_dictionary.h",0); // 
+ strpack_build("bin\\TheMoonstone.txt",512,0,"..\\strpack_dictionary.h"); // 
 
  strpack_testcompressfile("bin\\TheMoonstone.txt");
 
@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
  for(i=0;*samples[i];i++)
  {
   len=strpack_compress(samples[i],pstr,sizeof(pstr),&perc);gperc+=perc;
-  fprintf(f,"'%s' compressed by %d%%\n",samples[i],100-perc);
+  fprintf(f,"'%s' compressed to its %d%%\n",samples[i],perc);
  }
  fclose(f);
 
