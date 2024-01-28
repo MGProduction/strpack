@@ -7,7 +7,7 @@
 
 #define STRPACK_IMPLEMENT
 //#define STRPACK_DECOMPRESSONLY
-#define STRPACK_USEEXTERNALDICTIONARY
+//#define STRPACK_USEEXTERNALDICTIONARY
 #define STRPACK_IMPLEMENT_BUILD
 #include "../strpack.h"
 
@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
 
  strpack_build("bin\\TheMoonstone.txt",512,0,"..\\strpack_dictionary.h"); // 
 
- strpack_testcompressfile("bin\\TheMoonstone.txt");
+ strpack_testcompressfile("bin\\timeandthegods.txt");
 
  f=fopen("test.txt","wb");
  for(i=0;*samples[i];i++)

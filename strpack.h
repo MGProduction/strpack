@@ -420,7 +420,7 @@ u8 strpack_getsame(const char*text)
  else
   return 0;
 }
-#define dbg_stats
+//#define dbg_stats
 #if defined(dbg_stats)
 int dbg_backlen[64],dbg_backref[64];
 #endif
